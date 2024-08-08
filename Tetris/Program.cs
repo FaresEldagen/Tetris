@@ -2,7 +2,10 @@
 using System.Dynamic;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text;
 using static System.Runtime.InteropServices.JavaScript.JSType;
+using System.Threading.Tasks;
+
 
 namespace Tetris
 {
@@ -311,16 +314,63 @@ namespace Tetris
     }
     class Program
     {
+        static bool KeyPressWithinTimeSpan(out ConsoleKeyInfo keyInfo, TimeSpan timeout)
+        {
+            DateTime start = DateTime.Now;
+
+            while ((DateTime.Now - start) < timeout)
+            {
+                if (Console.KeyAvailable)
+                {
+                    keyInfo = Console.ReadKey(intercept: true);
+                    return true;
+                }
+                Thread.Sleep(50); // Small delay to reduce CPU usage
+            }
+
+            keyInfo = default;
+            return false;
+        }
+
+        static float ChooseDificulty()
+        {
+            Console.WriteLine("Choose The Dificulty : ");
+            Console.WriteLine("1 - Easy");
+            Console.WriteLine("2 - Normal");
+            Console.WriteLine("3 - Hard");
+            while (true) 
+            {
+                Console.Write("Your choice : ");
+                string choice = Console.ReadLine();
+                if (choice == "1")
+                {
+                    return 1.5F;
+                }
+                else if (choice == "2")
+                {
+                    return 1;
+
+                }
+                else if (choice == "3")
+                {
+                    return 0.5F;
+                }
+                else { Console.WriteLine("Invalid Input"); }
+            }
+        }
+
         static void Main(string[] args)
         {
             Console.Title = "Tetris";
             Console.BackgroundColor = ConsoleColor.Blue;
             Console.ForegroundColor = ConsoleColor.White;
+            Console.Clear();
             int score = 0;
             int hieght = 20;
             int width = 10;
             int[,] background = new int[hieght, width];
             int[,] Tempbackground = new int[hieght, width];
+            float dificulty = ChooseDificulty();
 
 
             bool NotGameOver = true;
@@ -341,8 +391,15 @@ namespace Tetris
                         {
                             TryInput = false;
                             Console.Write("Your Action :");
-                            ConsoleKeyInfo keyI = Console.ReadKey();
-                            string action = Convert.ToString(keyI.Key);
+                            string action ;
+                            if (KeyPressWithinTimeSpan(out ConsoleKeyInfo keyInfo, TimeSpan.FromSeconds(dificulty)))
+                            {
+                                action = Convert.ToString(keyInfo.Key);
+                            }
+                            else
+                            {
+                                action = "NoInput";
+                            }
                             errorM = "";
                             if (action == "LeftArrow") 
                             {
@@ -354,10 +411,13 @@ namespace Tetris
                                 if ( ((x + CurrentShape.CurrentRotate.GetLength(1)) != 10) && CheckMove(background,x+1,y,CurrentShape))
                                     { x++; } 
                             }
-                            else if (action == "DownArrow") 
+                            else if (action == "DownArrow" || action == "NoInput") 
                             { 
                                 if ( ((y + 1) != 20) && CheckMove(background,x,y+1,CurrentShape))
-                                    { y++; } 
+                                    { y++; }
+
+                                if (!(((y + 1) != 20) && CheckMove(background, x, y + 1, CurrentShape)))
+                                { NotPlaced = false; }
                             }
                             else if (action == "Z") 
                             {
@@ -368,13 +428,6 @@ namespace Tetris
                                     if (y + stop + 1 >= 20) break;
                                 }
                                 y += stop;
-                            }
-                            else if (action == "X") 
-                            { 
-                                if (((y + 1) != 20) && CheckMove(background, x, y + 1, CurrentShape))
-                                { errorM = "Can't stop here"; }
-                                else 
-                                { NotPlaced = false; }
                             }
                             else if (action == "UpArrow") 
                             {
@@ -423,7 +476,6 @@ namespace Tetris
                         "Press RightArrow to go left\n" +
                         "Press DownArrow to go down\n" +
                         "Press z to go to the bottom\n" +
-                        "Press x to Confirm the place\n" +
                         "Press Escape to exit");
                     Console.WriteLine();
                     if (errorM.Length > 0) { Console.WriteLine(errorM); Console.Beep(); }
